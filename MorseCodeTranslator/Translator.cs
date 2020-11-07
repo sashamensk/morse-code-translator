@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Text;
 
+#pragma warning disable s2368
+
 namespace MorseCodeTranslator
 {
     public static class Translator
