@@ -9,25 +9,20 @@ namespace MorseCodeTranslator
 {
     public static class Translator
     {
-        public static string RemoveLastWhiteSpace(string str)
+        public static int GetAlphaIndexOfChar(char c)
         {
-            if (str[str.Length - 1] == ' ')
-            {
-                str = str.Remove(str.Length - 1);
-            }
-
-            return str;
+            return char.ToUpper(c, CultureInfo.CurrentCulture) - 64;
         }
 
-        public static int GetAlphabetNum(char letter)
+        public static string GetMorseCode(int index)
         {
-            char upper = char.ToUpper(letter);
-            if (upper < 'A' || upper > 'Z')
+            string morseCode = string.Empty;
+            for (int y = 1; y < MorseCodes.CodeTable[index].Length; y++)
             {
-                throw new ArgumentOutOfRangeException("value", "This method only accepts standard Latin characters.");
+                morseCode = string.Concat(morseCode, MorseCodes.CodeTable[index][y]);
             }
 
-            return (int)upper - (int)'A';
+            return morseCode;
         }
 
         public static string TranslateToMorse(string message)
@@ -37,56 +32,21 @@ namespace MorseCodeTranslator
                 throw new ArgumentNullException(nameof(message));
             }
 
-            StringBuilder text = new StringBuilder(message);
-            text.Replace(',', ' ');
-            text.Replace('.', ' ');
-            for (int i = 0; i < text.Length; i++)
-            {
-                string currentChar = text.ToString(i, 1);
-                if (char.IsLetter(char.ToUpper(text[i], CultureInfo.CurrentCulture)))
-                {
-                    int alphaIndex = GetAlphabetNum(text[i]);
-                    string temp = string.Empty;
-                    for (int y = 1; y < MorseCodes.CodeTable[alphaIndex].Length; y++)
-                    {
-                        temp = string.Concat(temp, MorseCodes.CodeTable[alphaIndex][y]);
-                    }
+            StringBuilder result = new StringBuilder(message);
+            result.Replace(",", string.Empty);
+            result.Replace(".", string.Empty);
 
-                    if (string.Compare(temp, currentChar, StringComparison.CurrentCulture) != 0)
-                    {
-                        text.Replace(currentChar, string.Concat(temp, " "));
-                        i = i + temp.Length;
-                    }
+            for (int i = 0; i < result.Length; i++)
+            {
+                if (char.IsLetter(result[i]))
+                {
+                    string currentChar = result[i].ToString();
+                    result.Replace(currentChar, $"{GetMorseCode(GetAlphaIndexOfChar(result[i]) - 1)} ");
                 }
             }
 
-            string result = text.ToString(0, text.Length);
-            result = result.Trim(' ');
-            result = result.Replace("   ", " ", StringComparison.CurrentCulture);
-            result = result.Replace("  ", " ", StringComparison.CurrentCulture);
-            return result;
-        }
-
-        public static string MorseWordToText(string morse)
-        {
-            char[][] codes = (char[][])MorseCodes.CodeTable.Clone();
-
-            for (int i = 0; i < codes.Length; i++)
-            {
-                string currentCode = string.Empty;
-                for (int y = 1; y < codes[i].Length; y++)
-                {
-                    currentCode += codes[i][y];
-                }
-
-                if (string.Compare(morse, currentCode, true, CultureInfo.CurrentCulture) == 0)
-                {
-                    string result = codes[i][0].ToString();
-                    return result;
-                }
-            }
-
-            return "0";
+            result.Replace("  ", " ");
+            return result.ToString().Trim();
         }
 
         public static string TranslateToText(string morseMessage)
@@ -96,43 +56,147 @@ namespace MorseCodeTranslator
                 throw new ArgumentNullException(nameof(morseMessage));
             }
 
-            List<string> list = MakeList(morseMessage);
-            for (int i = 0; i < list.Count; i++)
+            StringBuilder result = new StringBuilder();
+
+            string[] words = morseMessage.Split(' ', StringSplitOptions.None);
+            for (int i = 0; i < words.Length; i++)
             {
-                string alpha = MorseWordToText(list[i]);
-                list[i] = alpha;
+                for (int y = 0; y < MorseCodes.CodeTable.Length; y++)
+                {
+                    if (words[i] == GetMorseCode(y))
+                    {
+                        result.Append(char.ToUpper(MorseCodes.CodeTable[y][0], CultureInfo.CurrentCulture));
+                    }
+                }
             }
 
-            string[] result = new string[list.Count];
-            list.CopyTo(result);
-            string str = string.Empty;
-            foreach (var item in result)
-            {
-                str += item;
-            }
-
-            return str;
+            result.ToString();
+            return result.ToString();
         }
 
         public static void WriteMorse(this char[][] codeTable, string message, StringBuilder morseMessageBuilder, char dot = '.', char dash = '-', char separator = ' ')
         {
-            codeTable = MorseCodes.CodeTable;
-            for (int i = 0; i < length; i++)
+            if (codeTable is null)
             {
-
+                throw new ArgumentNullException(nameof(codeTable));
             }
 
+            if (message is null)
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            if (morseMessageBuilder is null)
+            {
+                throw new ArgumentNullException(nameof(morseMessageBuilder));
+            }
+
+            string result = string.Empty;
+
+            for (int i = 0; i < message.Length; i++)
+            {
+                if (char.IsLetter(message[i]))
+                {
+                    result = string.Concat(result, GetMorseCode(GetAlphaIndexOfChar(message[i]) - 1), " ");
+                }
+            }
+
+            result = result.Trim();
+            morseMessageBuilder.Append(result);
+
+            if (dot != '.')
+            {
+                morseMessageBuilder.Replace('.', dot);
+            }
+
+            if (dash != '-')
+            {
+                morseMessageBuilder.Replace('-', dash);
+            }
+
+            if (separator != ' ')
+            {
+                morseMessageBuilder.Replace(' ', separator);
+            }
         }
 
         public static void WriteText(char[][] codeTable, string morseMessage, StringBuilder messageBuilder, char dot = '.', char dash = '-', char separator = ' ')
         {
-            // TODO #4. Implement the method.
-            throw new NotImplementedException();
-        }
+            if (codeTable is null)
+            {
+                throw new ArgumentNullException(nameof(codeTable));
+            }
 
-        public static List<string> MakeList(string str)
-        {
-            return new List<string>(str.Split(' '));
+            if (morseMessage is null)
+            {
+                throw new ArgumentNullException(nameof(morseMessage));
+            }
+
+            if (messageBuilder is null)
+            {
+                throw new ArgumentNullException(nameof(messageBuilder));
+            }
+
+            if (separator != ' ')
+            {
+                morseMessage = morseMessage.Replace(separator, ' ');
+                separator = ' ';
+            }
+
+            if (dot != '.')
+            {
+                morseMessage = morseMessage.Replace(dot, '.');
+                dot = '.';
+            }
+
+            if (dash != '-')
+            {
+                morseMessage = morseMessage.Replace(dash, '-');
+                dash = '-';
+            }
+
+            if (morseMessage.Contains(separator, StringComparison.CurrentCultureIgnoreCase))
+            {
+                string[] words = morseMessage.Split(separator);
+                for (int i = 0; i < words.Length; i++)
+                {
+                    for (int y = 0; y < codeTable.Length; y++)
+                    {
+                        string temp = string.Empty;
+
+                        for (int x = 1; x < codeTable[y].Length; x++)
+                        {
+                            temp = string.Concat(temp, codeTable[y][x]);
+                        }
+
+                        if (words[i] == temp)
+                        {
+                            messageBuilder.Append(codeTable[y][0]);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                string[] words = new string[1] { morseMessage };
+                for (int i = 0; i < words.Length; i++)
+                {
+                    for (int y = 0; y < codeTable.Length; y++)
+                    {
+                        string temp = string.Empty;
+
+                        for (int x = 1; x < codeTable[y].Length; x++)
+                        {
+                            temp = string.Concat(temp, codeTable[y][x]);
+                        }
+
+                        if (words[i] == temp)
+                        {
+                            messageBuilder.Append(codeTable[y][0]);
+                        }
+                    }
+                }
+            }
         }
     }
 }
